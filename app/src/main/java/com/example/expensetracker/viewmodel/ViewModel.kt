@@ -31,11 +31,11 @@ class AuthViewModel @Inject constructor(
     val currentUser: FirebaseUser?
         get() = repository.currentUser
 
-//    init {
-//        repository.currentUser?.let {
-//            _loginFlow.value = Resource.Success(it)
-//        }
-//    }
+    init {
+        if (repository.currentUser != null) {
+            _loginFlow.value = Resource.Success(repository.currentUser!!)
+        }
+    }
 
     fun login(email: String, password: String) = viewModelScope.launch {
         _loginFlow.value = Resource.Loading
@@ -59,6 +59,7 @@ class AuthViewModel @Inject constructor(
 
     //    =----------------------------F-I-R-E-S-T-O-R-E------------------->
 
+    var sortBy = "date"
 
     private val _expenses = MutableStateFlow<Resource<List<Expense>>>(Resource.Success(emptyList()))
     val expenses: StateFlow<Resource<List<Expense>>> = _expenses
@@ -67,17 +68,38 @@ class AuthViewModel @Inject constructor(
         MutableStateFlow<Resource<Profile>?>(Resource.Success(Profile(null.toString())))
     val getProfile: StateFlow<Resource<Profile>?> = _getProfile
 
+    private val _expense = MutableStateFlow<Resource<Expense>?>(null)
+    val expense: StateFlow<Resource<Expense>?> = _expense
+
+    fun aggregateExpenses(expense: List<Expense>):Map<String, Double> {
+        
+        // Group expenses by category and calculate the total amount
+        val aggregatedExpenses = expense
+            .filter { it.amount != null }
+            .groupBy { it.category }
+            .mapValues { (_, expenses) -> expenses.sumByDouble { ((it.amount ?: 0.0).toDouble()) } }
+
+        // Print the results
+        aggregatedExpenses.forEach { (category, totalAmount) ->
+            println("Category: $category, Total Amount: $totalAmount")
+        }
+        return aggregatedExpenses
+    }
+
+
+
+
 
     fun addProfile(profile: Profile) {
         val uid = currentUser?.uid ?: run {
-            Log.e("FirestoreError", "User not authenticated")
+            Log.e("FireStoreError", "User not authenticated")
             return
         }
         val profileMap = mapOf(
             "name" to profile.name,
             "age" to profile.age,
             "bio" to profile.bio,
-            "income" to profile.income
+            "income" to profile.income,
         )
 
         firestore.collection("users").document(uid).set(profileMap)
@@ -96,6 +118,7 @@ class AuthViewModel @Inject constructor(
             _getProfile.value = Resource.Failure(Exception("User not logged in"))
             return
         }
+        _getProfile.value = Resource.Loading
 
         firestore.collection("users").document(uid).get()
             .addOnSuccessListener { value ->
@@ -116,9 +139,12 @@ class AuthViewModel @Inject constructor(
     fun addExpense(expense: Expense) {
         val uid = currentUser?.uid
         val expenseMap = hashMapOf(
+            "uid" to expense.id,
             "category" to expense.category,
+            "note" to expense.note,
             "amount" to expense.amount,
-            "date" to System.currentTimeMillis()
+            "date" to expense.date,
+            "tags" to expense.tags
         ).toMap()
 
         if (uid != null) {
@@ -142,7 +168,7 @@ class AuthViewModel @Inject constructor(
     fun deleteExpense(expenseId: String) {
         val uid = currentUser?.uid
         if (uid != null) {
-            firestore.collection("users").document(uid!!).collection("expenses")
+            firestore.collection("users").document(uid).collection("expenses")
                 .document(expenseId)
                 .delete()
         } else Log.e("FirestoreError", "User not authenticated")
@@ -155,16 +181,80 @@ class AuthViewModel @Inject constructor(
             return
         }
 
-        firestore.collection("users").document(uid).collection("expenses")
-            .get()
-            .addOnSuccessListener { result ->
-                val expenses = result.mapNotNull { it.toObject(Expense::class.java) }
-                _expenses.value = Resource.Success(expenses)
+        firestore.collection("users").document(uid).collection("expenses").orderBy(sortBy)
+            .addSnapshotListener { value, error ->
+                if (value != null && !value.isEmpty) {
+                    val result = value.documents.mapNotNull {
+                        it.toObject(Expense::class.java)?.copy(id = it.id)
+                    }
+                    _expenses.value = Resource.Success(result)
+                } else if (error != null) {
+                    _expenses.value = Resource.Failure(error)
+                } else {
+                    _expenses.value = Resource.Success(emptyList())
+
+                }
             }
-            .addOnFailureListener { exception ->
-                Log.e("FirestoreError", "Error getting expenses", exception)
-            }
+
     }
 
-}
 
+    fun getExpenseById(id: String) {
+        viewModelScope.launch {
+            val uId = currentUser?.uid
+            if (uId != null) {
+                val documentReference =
+                    firestore.collection("users").document(uId).collection("expenses").document(id)
+
+                documentReference.addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("getExpenseById", "Error getting expense by id: $error")
+                        _expense.value = Resource.Failure(error) // Handle error case
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null && snapshot.exists()) {
+                        val result = snapshot.toObject(Expense::class.java)
+                        if (result != null) {
+                            _expense.value = Resource.Success(result)
+                        } else {
+                            Log.e(
+                                "getExpenseById",
+                                "Document conversion failed or document is null."
+                            )
+                            _expense.value =
+                                Resource.Failure(Exception("Expense not found or conversion failed"))
+                        }
+                    } else {
+                        Log.e("getExpenseById", "No such document exists.")
+                        _expense.value = Resource.Failure(Exception("Expense not found"))
+                    }
+                }
+            } else {
+                Log.e("getExpenseById", "User not authenticated")
+                _expense.value = Resource.Failure(Exception("User not authenticated"))
+            }
+        }
+
+    }
+
+    fun updateExpense(expense: Expense, expenseId: String) {
+        val uid = currentUser?.uid
+        if (uid != null && expenseId.isNotEmpty()) {
+            val expenseMap = hashMapOf(
+                "category" to expense.category,
+                "note" to expense.note,
+                "amount" to expense.amount,
+                "date" to expense.date,
+                "tag" to expense.tags
+            ).toMap()
+            firestore.collection("users").document(uid).collection("expenses").document(expenseId)
+                .update(expenseMap).addOnSuccessListener {
+                    Log.d("Firestore", "Note updated successfully")
+                }.addOnFailureListener {
+                    Log.e("FirestoreError", "Error updating note", it)
+                }
+
+        }
+    }
+}

@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.expensetracker.data.utils.Profile
-import com.example.expensetracker.nav.HomeScreen
+import com.example.expensetracker.nav.AllExpense
 import com.example.expensetracker.viewmodel.AuthViewModel
 
 @Composable
@@ -95,7 +95,7 @@ fun ProfileScreen(viewModel: AuthViewModel = hiltViewModel(), navController: Nav
                             income = incomeDouble
                         )
                     )
-                    navController.navigate(HomeScreen)
+                    navController.navigate(AllExpense)
                 } else {
                     errorMsg = "Please enter valid values for age and income."
                 }

@@ -1,15 +1,24 @@
 package com.example.expensetracker.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,94 +28,97 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.expensetracker.data.Resource
+import com.example.expensetracker.nav.AllExpense
 import com.example.expensetracker.nav.ProfileScreen
-import com.example.expensetracker.nav.HomeScreen
+import com.example.expensetracker.ui_components.TextFieldsCustom
+import com.example.expensetracker.ui_constants.backgroundColor
 import com.example.expensetracker.viewmodel.AuthViewModel
-import kotlinx.coroutines.delay
 
 @Composable
-fun LoginScreen(viewModel: AuthViewModel = hiltViewModel(), navController: NavController) {
-    val signupState = viewModel.signUpFlow.collectAsState()
-    val loginState = viewModel.loginFlow.collectAsState()
-
+fun LoginScreen(
+    viewModel: AuthViewModel = hiltViewModel(),
+    navController: NavController = rememberNavController()
+) {
+    val loginState = viewModel.loginFlow.collectAsState().value
+    val signUpState = viewModel.signUpFlow.collectAsState().value
     var login by remember {
         mutableStateOf(false)
     }
     var error by remember {
         mutableStateOf("")
     }
-    val context = LocalContext.current
 
-    AuthPage(login, error, viewModel) { login = it }
-    if (!login) signupState.value?.let {
-        when (it) {
-            is Resource.Loading -> {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+    AuthPage(login = login, error = error, viewModel = viewModel) { login = it }
+    when (loginState) {
+        is Resource.Success -> {
+            LaunchedEffect(Unit) {
+                navController.navigate(AllExpense)
+
             }
-
-            is Resource.Failure -> {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    error = it.exception.message.toString()
-                }
-            }
-
-            is Resource.Success -> {
-                LaunchedEffect(Unit) {
-                    delay(100)
-                    navController.navigate(ProfileScreen)
-                }
-            }
-
         }
+
+        is Resource.Failure -> {
+            error = loginState.exception.message.toString()
+        }
+
+        Resource.Loading -> {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+
+        null -> {}
     }
-    else {
-        loginState.value?.let {
-            when (it) {
-                is Resource.Failure -> {
-                    error = it.exception.message.toString()
-                }
+    when (signUpState) {
+        is Resource.Failure -> {
+            error = signUpState.exception.message.toString()
 
-                Resource.Loading -> {
-                    Column(
-                        Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
+        }
 
-                is Resource.Success -> {
-                    LaunchedEffect(Unit) {
-                        delay(100)
-                        navController.navigate(HomeScreen)
-                    }
-                }
-
+        Resource.Loading -> {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
             }
         }
+
+        is Resource.Success -> {
+            LaunchedEffect(Unit) {
+                navController.navigate(ProfileScreen)
+            }
+
+        }
+
+        null -> {}
     }
 }
 
-
+@Preview
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AuthPage(login: Boolean, error: String, viewModel: AuthViewModel, logged: (Boolean) -> Unit) {
+fun AuthPage(
+    login: Boolean = false,
+    error: String = "",
+    viewModel: AuthViewModel = hiltViewModel(),
+    logged: (Boolean) -> Unit = {}
+) {
 
     var password by remember {
         mutableStateOf("")
@@ -119,79 +131,74 @@ fun AuthPage(login: Boolean, error: String, viewModel: AuthViewModel, logged: (B
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (!login) {
-            Text(
-                text = "Sign Up",
-                modifier = Modifier
-                    .padding(bottom = 10.dp),
-                fontSize = 30.sp
-            )
-        } else
-            Text(
-                text = "Login",
-                modifier = Modifier
-                    .padding(bottom = 10.dp),
-                fontSize = 30.sp
-            )
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text(text = "Email") },
-            modifier = Modifier
-                .padding(10.dp)
-                .fillMaxWidth(),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text(text = "Password") },
-            modifier = Modifier
-                .padding(10.dp)
-                .fillMaxWidth(),
-            singleLine = true
-        )
-        if (!login) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(text = "Name") },
-                modifier = Modifier
-                    .padding(10.dp)
-                    .fillMaxWidth(),
-                singleLine = true
-            )
-        }
-
-        Button(onClick = {
-            if (!login) viewModel.signUp(email, password, name) else viewModel.login(
-                email,
-                password
-            )
-        }) {
+        Box(Modifier.weight(.6f), contentAlignment = Alignment.BottomCenter) {
             if (!login) {
-                Text(text = "Sign Up")
-            } else Text(text = "Login")
+                Text(
+                    text = "Sign Up",
+                    modifier = Modifier
+                        .padding(bottom = 10.dp),
+                    fontSize = 30.sp
+                )
+            } else
+                Text(
+                    text = "Login",
+                    modifier = Modifier
+                        .padding(bottom = 10.dp),
+                    fontSize = 30.sp
+                )
         }
-        Text(text = error)
-        if (!login) {
-            Text(text = "Already have an account? Login", Modifier.clickable {
-                logged(true)
-                email = ""
-                password = ""
-                name = ""
-            })
-        } else
-            Text(text = "Don't have an account? Sign Up", Modifier.clickable {
-                logged(false)
-                email = ""
-                password = ""
-                name = ""
-            })
+
+        Box(Modifier.weight(.7f)) {
+            Column {
+                TextFieldsCustom(label = "email") { email = it }
+                TextFieldsCustom(label = "password") { password = it }
+                if (!login) {
+                    TextFieldsCustom(label = "name")
+                    { name = it }
+                }
+            }
+        }
+        Box(Modifier.weight(.7f), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+
+
+                Text(text = error)
+
+
+                Button(onClick = {
+
+                    if (!login) viewModel.signUp(email, password, name) else viewModel.login(
+                        email,
+                        password
+                    )
+
+                }) {
+                    if (!login) {
+                        Text(text = "Sign Up")
+                    } else Text(text = "Login")
+                }
+                if (!login) {
+                    Text(text = "Already have an account? Login", Modifier.clickable {
+                        logged(true)
+                        email = ""
+                        password = ""
+                        name = ""
+                    })
+                } else
+                    Text(text = "Don't have an account? Sign Up", Modifier.clickable {
+                        logged(false)
+                        email = ""
+                        password = ""
+                        name = ""
+                    })
+            }
+        }
+
     }
 }

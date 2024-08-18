@@ -8,7 +8,7 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(private val auth: FirebaseAuth) : AuthRepository {
     override val currentUser: FirebaseUser?
-        get() = auth.currentUser!!
+        get() = auth.currentUser
 
     override suspend fun login(email: String, password: String): Resource<FirebaseUser> {
         return try {
