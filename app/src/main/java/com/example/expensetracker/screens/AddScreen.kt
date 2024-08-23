@@ -8,20 +8,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.expensetracker.data.utils.Expense
 import com.example.expensetracker.nav.AllExpense
+import com.example.expensetracker.screens.all_expenses.TagCard
 import com.example.expensetracker.ui_components.TextFieldsCustom
 import com.example.expensetracker.ui_constants.backgroundColor
 import com.example.expensetracker.viewmodel.AuthViewModel
@@ -43,8 +47,7 @@ fun AddExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCon
 
     var category by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
-    var note by rememberSaveable { mutableStateOf("") }
-    var tag by rememberSaveable { mutableStateOf("") }
+    var tags by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf("") }
 
 
@@ -53,12 +56,15 @@ fun AddExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCon
         Modifier
             .fillMaxSize()
             .background(backgroundColor)
-            .padding(top = 40.dp)
+            .padding(top = 40.dp),
+//        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
     ) {
         Row(
             Modifier
                 .padding(start = 30.dp, end = 30.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .weight(.1f),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -84,8 +90,7 @@ fun AddExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCon
                         Expense(
                             category = category,
                             amount = amount.toFloat(),
-                            note = note,
-                            tags = tag,
+                            tags = tags,
                             date = date
                         )
                     )
@@ -93,7 +98,7 @@ fun AddExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCon
                 },
                 Modifier
                     .size(90.dp, 40.dp),
-                enabled = category.isNotEmpty() && amount.isNotEmpty() && note.isNotEmpty() && date.isNotEmpty()
+                enabled = category.isNotEmpty() && amount.isNotEmpty() && date.isNotEmpty()
             ) {
                 Text(text = "Add")
             }
@@ -101,26 +106,48 @@ fun AddExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCon
 
         Column(
             Modifier
-                .weight(.7f)
                 .fillMaxWidth()
+                .weight(.7f)
                 .background(backgroundColor)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            
+            val trueFalse by remember {
+                mutableStateOf(false)
+            }
+            val tagg = viewModel.tagg
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(tagg.chunked(4)) { tagRow ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        tagRow.forEach { tag ->
+                            TagCard(
+                                tag = tag,
+                                trueOrFalse = mutableStateOf(trueFalse),
+                            ) {
+                                tags = it
+
+                            }
+                        }
+                    }
+                }
+            }
 
             TextFieldsCustom(label = "category") {
                 category = it
             }
-            TextFieldsCustom(label = "note") {
-                note = it
-            }
             TextFieldsCustom(label = "amount", keyboardType = KeyboardType.Number) {
                 amount = it
-            }
-            TextFieldsCustom(label = "tags") {
-                tag = it
             }
             TextFieldsCustom(label = "date") {
                 date = it

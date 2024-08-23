@@ -80,11 +80,9 @@ fun EditExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCo
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val note = remember {
-                    mutableStateOf(expense.result.note.toString())
-                }
+
                 val category = remember {
-                    mutableStateOf(expense.result.category.toString())
+                    mutableStateOf(expense.result.category)
                 }
                 val amount = remember {
                     mutableStateOf(expense.result.amount.toString())
@@ -108,8 +106,6 @@ fun EditExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCo
                     }
                 }
 
-
-                TextFieldsCustom(label = "Edit note", note = note.value) { note.value = it }
                 TextFieldsCustom(label = "Edit category", note = category.value) {
                     category.value = it
                 }
@@ -128,7 +124,6 @@ fun EditExpense(viewModel: AuthViewModel = hiltViewModel(), navController: NavCo
                                 viewModel.updateExpense(
                                     expenseId = updateExpenseId,
                                     expense = Expense(
-                                        note = note.value,
                                         category = category.value,
                                         amount = amount.value.toFloat(),
                                         date = date.value

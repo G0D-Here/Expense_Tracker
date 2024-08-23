@@ -38,7 +38,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Resource
 import com.example.expensetracker.data.utils.Profile
-import com.example.expensetracker.nav.AllExpense
 import com.example.expensetracker.nav.LoginScreen
 import com.example.expensetracker.nav.ProfileScreen
 import com.example.expensetracker.ui_constants.backgroundColor
@@ -174,7 +173,7 @@ fun ProfilePage(
             horizontalArrangement = Arrangement.End
         ) {
             Button(
-                onClick = { navController.navigate(AllExpense) },
+                onClick = { navController.navigate(ProfileScreen) },
                 colors = ButtonDefaults.buttonColors(
                     backgroundColor
                 )

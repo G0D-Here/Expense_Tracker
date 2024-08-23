@@ -1,6 +1,7 @@
 package com.example.expensetracker.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expensetracker.data.AuthRepositoryImpl
@@ -61,6 +62,30 @@ class AuthViewModel @Inject constructor(
 
     var sortBy = "date"
 
+    private val _tagg =
+        mutableStateListOf(
+            "Rent",
+            "Groceries",
+            "Utilities",
+            "Transportation",
+            "Dining Out",
+            "Shopping",
+            "Entertainment",
+            "Health",
+            "Bills",
+            "Subscriptions",
+            "Travel",
+            "Miscellaneous"
+        )
+    val tagg: List<String> get() = _tagg
+
+    fun addTag(tag: String) {
+        if (tag.isNotEmpty() && !_tagg.contains(tag)) {
+            _tagg.add(tag)
+            // Optionally, you could save to a database or other persistent storage here
+        }
+    }
+
     private val _expenses = MutableStateFlow<Resource<List<Expense>>>(Resource.Success(emptyList()))
     val expenses: StateFlow<Resource<List<Expense>>> = _expenses
 
@@ -71,13 +96,11 @@ class AuthViewModel @Inject constructor(
     private val _expense = MutableStateFlow<Resource<Expense>?>(null)
     val expense: StateFlow<Resource<Expense>?> = _expense
 
-    fun aggregateExpenses(expense: List<Expense>):Map<String, Double> {
-        
-        // Group expenses by category and calculate the total amount
+    fun aggregateExpenses(expense: List<Expense>): Map<String, Double> {
         val aggregatedExpenses = expense
             .filter { it.amount != null }
             .groupBy { it.category }
-            .mapValues { (_, expenses) -> expenses.sumByDouble { ((it.amount ?: 0.0).toDouble()) } }
+            .mapValues { (_, expenses) -> expenses.sumOf { ((it.amount ?: 0.0).toDouble()) } }
 
         // Print the results
         aggregatedExpenses.forEach { (category, totalAmount) ->
@@ -86,8 +109,32 @@ class AuthViewModel @Inject constructor(
         return aggregatedExpenses
     }
 
+    fun aggregateExpensesByDate(expenses: List<Expense>): Map<String, Double> {
+        return expenses
+            .filter { it.amount != null }
+            .groupBy { it.category }
+            .mapValues { (_, expenses) -> expenses.sumOf { ((it.amount ?: 0.0).toDouble()) } }
 
+    }
 
+    fun editProfile(profile: Profile) {
+        val uid = currentUser?.uid ?: run {
+            return
+        }
+        val profileMap = mapOf(
+            "name" to profile.name,
+            "age" to profile.age,
+            "bio" to profile.bio,
+            "income" to profile.income,
+        )
+        firestore.collection("users").document(uid).update(profileMap)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Profile added successfully")
+            }
+            .addOnFailureListener {
+                Log.e("FirestoreError", "Error adding profile", it)
+            }
+    }
 
 
     fun addProfile(profile: Profile) {
@@ -141,7 +188,6 @@ class AuthViewModel @Inject constructor(
         val expenseMap = hashMapOf(
             "uid" to expense.id,
             "category" to expense.category,
-            "note" to expense.note,
             "amount" to expense.amount,
             "date" to expense.date,
             "tags" to expense.tags
@@ -243,7 +289,6 @@ class AuthViewModel @Inject constructor(
         if (uid != null && expenseId.isNotEmpty()) {
             val expenseMap = hashMapOf(
                 "category" to expense.category,
-                "note" to expense.note,
                 "amount" to expense.amount,
                 "date" to expense.date,
                 "tag" to expense.tags

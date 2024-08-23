@@ -1,25 +1,44 @@
 package com.example.expensetracker.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.expensetracker.data.Resource
+import com.example.expensetracker.ui_constants.backgroundColor
+import com.example.expensetracker.ui_constants.expenseCardColor
 import com.example.expensetracker.viewmodel.AuthViewModel
 
 @Composable
@@ -41,62 +60,133 @@ fun GraphScreen(viewModel: AuthViewModel = hiltViewModel(), navController: NavCo
             is Resource.Success -> {
 
                 Column(
-                    Modifier.fillMaxSize(),
+                    Modifier
+                        .fillMaxSize()
+                        .background(backgroundColor),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "Graph Screen")
                     val pieChartData = viewModel.aggregateExpenses(it.result)
-                    CustomPieChart(data = pieChartData.toMutableMap(), modifier = Modifier.size(200.dp))
+                    CustomPieChart(
+                        data = pieChartData.toMutableMap(),
+                        modifier = Modifier.size(200.dp)
+                    )
                 }
             }
         }
     }
 }
+
 @Composable
 fun CustomPieChart(data: Map<String, Double>, modifier: Modifier = Modifier) {
     val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Cyan)
     val totalValue = data.values.sum()
-    val radius = 150f // You can adjust this radius as needed
+    val radius = 300f // Outer radius
 
-    Canvas(modifier = modifier) {
-        var startAngle = 0.0
+    var selectedSlice by remember { mutableIntStateOf(-1) }
 
-        data.entries.forEachIndexed { index, entry ->
-            val sweepAngle = (entry.value.toFloat() / totalValue) * 360f
+    Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            // Pie Chart
+            Canvas(modifier = modifier) {
+                var startAngle = 0.0
 
-            // Draw the arc
-            drawArc(
-                color = colors[index % colors.size],
-                startAngle = startAngle.toFloat(),
-                sweepAngle = sweepAngle.toFloat(),
-                useCenter = true,
-                size = Size(size.width, size.height)
-            )
+                data.entries.forEachIndexed { index, entry ->
+                    val sweepAngle = (entry.value.toFloat() / totalValue) * 360f
+                    val isSelected = selectedSlice == index
+                    val sliceRadius =
+                        if (isSelected) radius + 20 else radius // Increase radius if selected
 
-            // Calculate the midpoint angle
-            val midAngle = startAngle + (sweepAngle / 2)
+                    drawArc(
+                        color = colors[index % colors.size],
+                        startAngle = startAngle.toFloat(),
+                        sweepAngle = sweepAngle.toFloat(),
+                        useCenter = true,
+                        size = Size(sliceRadius * 2, sliceRadius * 2),
+                        topLeft = Offset(
+                            (size.width - sliceRadius * 2) / 2,
+                            (size.height - sliceRadius * 2) / 2
+                        )
+                    )
 
-            // Calculate the position for the category name
-            val x = (size.width / 2) + radius * kotlin.math.cos(Math.toRadians(midAngle)).toFloat()
-            val y = (size.height / 2) + radius * kotlin.math.sin(Math.toRadians(midAngle)).toFloat()
+                    // Update startAngle for the next arc
+                    startAngle += sweepAngle
+                }
+            }
 
-            // Draw the category name at the calculated position
-            drawContext.canvas.nativeCanvas.apply {
-                drawText(
-                    entry.key,
-                    x,
-                    y,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.BLACK
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        textSize = 30f
-                    }
+            // Draw the inner circle to create a donut effect
+            Canvas(modifier = Modifier
+                .size(radius.dp)
+                .background(Color.Transparent)) {
+                drawCircle(
+                    color = Color.White, // Color of the inner circle
+                    radius = radius * 0.6f, // Adjust inner radius (0.6 means 60% of the outer radius)
+                    center = Offset(x = size.width / 2, y = size.height / 2)
                 )
             }
 
-            // Update startAngle for the next arc
-            startAngle += sweepAngle
+            // Display total expenses in the center of the pie chart
+            Text(
+                text = "Total: Rs. $totalValue",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Labels displayed in a grid-like layout (up to 4 per row)
+        val chunks = data.entries.chunked(4) // Group data entries in chunks of 4
+
+        if (selectedSlice != -1) {
+            Text(
+                text = "Amount: Rs. ${data.values.toList()[selectedSlice]}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(chunks) { chunk ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    chunk.forEachIndexed { _, entry ->
+                        val color = colors[(data.entries.indexOf(entry)) % colors.size]
+                        Card(
+                            Modifier
+                                .padding(4.dp)
+                                .background(expenseCardColor),
+                            elevation = CardDefaults.outlinedCardElevation(2.dp)
+                        ) {
+                            Box {
+                                Text(
+                                    text = entry.key,
+                                    modifier = Modifier
+                                        .clickable {
+                                            selectedSlice = data.entries.indexOf(entry)
+                                        }
+                                        .background(
+                                            color = expenseCardColor,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(8.dp),
+
+                                    color = Color.Black
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

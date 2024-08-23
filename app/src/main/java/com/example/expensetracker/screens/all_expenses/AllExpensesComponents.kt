@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.example.expensetracker.R
 import com.example.expensetracker.data.utils.Expense
@@ -219,15 +219,6 @@ fun ExpenseCard(
                 )
                 Text(text = "tag: ${expense?.tags}", fontSize = 10.sp)
             }
-            Text(
-                text = expense?.note.toString(),
-                fontSize = 13.sp,
-                fontFamily = FontFamily.Serif,
-                maxLines = 3,
-                letterSpacing = .07.em,
-                style = TextStyle(lineHeight = 1.2.em)
-            )
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -291,5 +282,33 @@ fun ExpenseCard(
             }
         }
 
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun TagCard(
+    tag: String = "RajuChai",
+    trueOrFalse: MutableState<Boolean> = mutableStateOf(false),
+    clickedOrNot: (Boolean) -> Unit = {},
+    onClick: (String) -> Unit = {}
+) {
+    val tagName by remember { mutableStateOf(tag) }
+
+    val trueOrFalsee = trueOrFalse.value
+
+    Card(
+        onClick = {
+            onClick(tagName)
+            // Toggle the Boolean value and update the MutableState
+            trueOrFalse.value = !trueOrFalsee
+            clickedOrNot(trueOrFalse.value)
+        },
+        colors = if (trueOrFalsee) CardDefaults.cardColors(Color.Gray) else CardDefaults.cardColors(
+            Color.White
+        )
+    ) {
+        Box(Modifier.padding(4.dp), contentAlignment = Alignment.Center) {
+            Text(text = tag, fontSize = 12.sp)
+        }
     }
 }
