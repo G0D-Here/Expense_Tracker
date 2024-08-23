@@ -112,24 +112,20 @@ fun CustomPieChart(data: Map<String, Double>, modifier: Modifier = Modifier) {
                             (size.height - sliceRadius * 2) / 2
                         )
                     )
-
-                    // Update startAngle for the next arc
                     startAngle += sweepAngle
                 }
             }
 
-            // Draw the inner circle to create a donut effect
             Canvas(modifier = Modifier
                 .size(radius.dp)
                 .background(Color.Transparent)) {
                 drawCircle(
-                    color = Color.White, // Color of the inner circle
-                    radius = radius * 0.6f, // Adjust inner radius (0.6 means 60% of the outer radius)
+                    color = Color.White, 
+                    radius = radius * 0.6f,
                     center = Offset(x = size.width / 2, y = size.height / 2)
                 )
             }
 
-            // Display total expenses in the center of the pie chart
             Text(
                 text = "Total: Rs. $totalValue",
                 style = MaterialTheme.typography.bodySmall,
@@ -139,8 +135,7 @@ fun CustomPieChart(data: Map<String, Double>, modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Labels displayed in a grid-like layout (up to 4 per row)
-        val chunks = data.entries.chunked(4) // Group data entries in chunks of 4
+        val chunks = data.entries.chunked(4)
 
         if (selectedSlice != -1) {
             Text(
